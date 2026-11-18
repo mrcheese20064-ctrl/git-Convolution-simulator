@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulador de convolución</title>
+<style>
+:root{--bg:#f3f4f9;--card:#fff;--edge:#dde1eb;--tx:#1b2030;--soft:#4b5468;--mu:#7a8296;--ac:#6d5bf0;--x:#6d5bf0;--h:#d6336c;--g:#16a34a;--o:#d97706;--gr:#e4e7ef;--inp:#f0f2f7;--chip:#e3f6ea;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#080b11;--card:#0e131c;--edge:#1c2331;--tx:#e5e7eb;--soft:#9ca3af;--mu:#6b7280;--ac:#7c6cf0;--x:#8b7cf6;--h:#f0589e;--g:#22c55e;--o:#f59e0b;--gr:#1a2130;--inp:#0a0e15;--chip:#0b2a1a}}
+:root[data-theme="dark"]{--bg:#080b11;--card:#0e131c;--edge:#1c2331;--tx:#e5e7eb;--soft:#9ca3af;--mu:#6b7280;--ac:#7c6cf0;--x:#8b7cf6;--h:#f0589e;--g:#22c55e;--o:#f59e0b;--gr:#1a2130;--inp:#0a0e15;--chip:#0b2a1a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.45 'JetBrains Mono','Cascadia Mono',Consolas,Menlo,'Courier New',monospace;
+background-image:linear-gradient(var(--gr) 1px,transparent 1px),linear-gradient(90deg,var(--gr) 1px,transparent 1px);background-size:28px 28px}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 16px 28px}
+.card{background:var(--card);border:1px solid var(--edge);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.sp{flex:1}
+button{font:inherit;font-size:11px;font-weight:700;cursor:pointer;color:var(--soft);background:var(--inp);border:1px solid var(--edge);border-radius:14px;padding:7px 14px}
+button:hover{border-color:var(--ac);color:var(--ac)}
+button.on,button.pri,button.chip{background:var(--chip);color:var(--g);border-color:var(--g)}
+button.chip{padding:5px 11px;border-radius:12px}
+button:disabled{opacity:.4;cursor:default}
+.badge{color:var(--g);border:1px solid var(--g);background:var(--chip);border-radius:15px;padding:6px 14px;font-size:11px;font-weight:700}
+.cap{font-size:10px;letter-spacing:.15em;font-weight:700;color:var(--mu);margin:8px 0 4px}
+.cap b{color:var(--ac)}
+input[type=text],input[type=number]{width:100%;font:inherit;font-size:14px;color:var(--tx);background:var(--inp);border:1px solid var(--edge);border-radius:8px;padding:8px 10px}
+input:focus{outline:none;border-color:var(--ac)}
+.err{color:#e5484d;font-size:11px;min-height:15px}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.help{color:var(--mu);font-size:11px;white-space:pre-line;margin-top:8px}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;border-bottom:1px solid var(--edge)}
+.tabs button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;padding:9px 14px}
+.tabs button.on{color:var(--ac);border-bottom-color:var(--ac);background:none}
+.pane{display:none}.pane.on{display:block}
+canvas{width:100%;height:340px;display:block}
+canvas.s{height:200px}
+.hero{font-size:clamp(30px,7vw,48px);font-weight:800;background:linear-gradient(90deg,#ec4899,#a855f7);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1.1}
+.lg{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--soft);font-size:11px;margin:4px 0 8px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input[type=range]{flex:1;min-width:140px;accent-color:var(--ac)}
+.live{font-size:11px;font-weight:700}
+.res{color:var(--soft);margin-top:8px}.res b{color:var(--g)}
+.ev{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}.ev input{width:130px}
+</style></head><body><div class="wrap">
+<div class="top"><button id="bc" class="on">CONTINUO · t</button><button id="bd">DISCRETO · n</button><span class="sp"></span><span class="badge" id="badge"></span></div>
+
+<div class="card">
+<div class="cap"><b>●</b> SEÑAL <span class="v1">x(t)</span></div><input type="text" id="ix" spellcheck="false"><div class="err" id="ex"></div>
+<div class="cap"><b style="color:var(--h)">●</b> RESPUESTA <span class="v2">h(t)</span></div><input type="text" id="ih" spellcheck="false"><div class="err" id="eh"></div>
+<div class="cap">RANGO VISIBLE ±</div><input type="number" id="rg" value="6" min="2" max="30" step="1" style="width:110px">
+<div class="cap" style="color:var(--g)">EJEMPLOS RÁPIDOS</div><div class="row" id="chips"></div>
+<div class="help" id="help"></div></div>
+
+<div class="tabs" id="tabs"><button data-t="1" class="on"></button><button data-t="2"></button><button data-t="3"></button><button data-t="4"></button></div>
+
+<div class="pane on card" id="p1"><canvas id="c1"></canvas></div>
+<div class="pane card" id="p2"><canvas id="c2"></canvas></div>
+<div class="pane card" id="p3">
+<div class="hero" id="hv">+0.000</div><div class="cap" id="hc"></div><div id="hs" style="color:var(--soft)"></div>
+<canvas id="c3a"></canvas><div class="lg" id="lg3"></div><canvas id="c3b" class="s"></canvas>
+<div class="ctl" style="margin-top:10px"><button class="pri" id="pl">▶ REPRODUCIR</button><button id="rs">↺ REINICIAR</button>
+<input type="range" id="sl" min="0" max="299" value="0"><span class="live" id="live"></span>
+<button id="sd">«</button><span id="spd" style="color:var(--o);font-weight:700;min-width:96px;text-align:center"></span><button id="sf">»</button></div></div>
+<div class="pane card" id="p4"><canvas id="c4"></canvas><div class="res" id="info"></div>
+<div class="ev"><span class="cap" id="evc" style="margin:0"></span><input type="text" id="et" value="1"><span id="eo"></span></div></div>
+</div>
+<script>
+const $=s=>document.querySelector(s),MONO="'JetBrains Mono',Consolas,monospace";
+const PC=[["pulso ∗ exp","u(t) - u(t-2)","exp(-t) * u(t)"],["pulso ∗ pulso","u(t) - u(t-2)","u(t) - u(t-2)"],["exp ∗ exp","exp(-t) * u(t)","exp(-2*t) * u(t)"],["rampa ∗ pulso","t * u(t)","u(t) - u(t-1)"],["seno ∗ exp","sin(2*pi*t) * (u(t) - u(t-2))","exp(-t) * u(t)"],["tri ∗ rect","tri(t)","rect(t)"],["delta ∗ exp","delta(t-1)","exp(-t) * u(t)"],["por tramos","(0 <= t < 1)*t + (1 <= t < 2)*(2 - t)","rect(t - 0.5)"]];
+const PD=[["rect ∗ rect","u(n) - u(n-4)","u(n) - u(n-4)"],["escalón ∗ exp","u(n)","0.5^n * u(n)"],["exp ∗ exp","0.8^n * u(n)","0.5^n * u(n)"],["rampa ∗ pulso","ramp(n) * (u(n) - u(n-5))","u(n) - u(n-3)"],["seno ∗ media móvil","sin(pi*n/4) * (u(n) - u(n-8))","(u(n) - u(n-3)) / 3"],["δ desplazada","delta(n-2)","0.7^n * u(n)"],["tri ∗ 2δ","tri(n/3)","delta(n) + delta(n-4)"],["por tramos","(0 <= n < 3)*(n+1) + (3 <= n < 6)*(6 - n)","rect((n-1)/2)"]];
+const HC="Variable t (o τ) · constantes pi, e · potencia t^2 · el * es opcional: 2t, 3sin(t)\nu(t) ramp rect tri sinc delta · sin cos tan exp log sqrt abs sign · where(c,a,b) max min\nComparaciones y lógica: (0 <= t < 2), and, or, not";
+const HD="Variable n (o k) · constantes pi, e · potencia 0.5^n\nu(n) delta(n) ramp rect tri · sin cos exp log sqrt abs sign · where(c,a,b) max min\nSolo se evalúa en enteros: delta(n-2) vale 1 en n = 2 y 0 en el resto. Corchetes válidos: u[n]";
+const SP=[.25,.5,1,2,4,8];
+let disc=false,D=null,pos=0,playing=false,si=2,last=0,tab=1;
+
+/* ---------- parser seguro: texto -> función ---------- */
+function funcs(dt,d){const e=d?1e-9:0,u=x=>x>=-e?1:0,M=Math;
+return{u,step:u,heaviside:u,ramp:x=>x*u(x),rect:x=>M.abs(x)<=.5+e?1:0,tri:x=>M.max(1-M.abs(x),0),
+delta:d?x=>M.abs(x)<.5?1:0:x=>M.max(1-M.abs(x)/dt,0)/dt,sinc:x=>x===0?1:M.sin(M.PI*x)/(M.PI*x),
+sin:M.sin,cos:M.cos,tan:M.tan,asin:M.asin,acos:M.acos,atan:M.atan,sinh:M.sinh,cosh:M.cosh,tanh:M.tanh,
+exp:M.exp,log:M.log,ln:M.log,log10:M.log10,sqrt:M.sqrt,abs:M.abs,sign:M.sign,sgn:M.sign,floor:M.floor,ceil:M.ceil,
+max:M.max,min:M.min,pow:M.pow,where:(c,a,b)=>c?a:b}}
+function mk(src,dt,d){
+let s=src.trim().replace(/π/g,"pi").replace(/δ/g,"delta").replace(/−/g,"-").replace(/[·×]/g,"*").replace(/τ/g,"t").replace(/\[/g,"(").replace(/\]/g,")");
+if(!s)throw Error("La expresión está vacía.");
+if(!/^[\w\s.+\-*\/%(),<>=!&|^]*$/.test(s))throw Error("Hay un carácter no permitido.");
+s=s.replace(/\band\b/g,"&&").replace(/\bor\b/g,"||").replace(/\bnot\b/g,"!");
+const A="(-?[\\w.]+(?:\\([^()]*\\))?)",O="(<=|<|>=|>)";
+s=s.replace(new RegExp(A+"\\s*"+O+"\\s*([tnk])\\s*"+O+"\\s*"+A,"g"),"(($1$2$3)&&($3$4$5))");
+for(let i=0;i<6;i++){const p=s.replace(/(\d+\.?\d*|[A-Za-z_]\w*(?:\([^()]*\))?|\([^()]*\))\s*\^\s*(-?\d+\.?\d*|[A-Za-z_]\w*(?:\([^()]*\))?|\([^()]*\))/g,"pow($1,$2)");if(p===s)break;s=p}
+s=s.replace(/(?<![\w.])(\d+\.?\d*|\.\d+)\s*(?![eE][+-]?\d)(?=[A-Za-z_(])/g,"$1*").replace(/\)\s*(?!(?:&&|\|\|))(?=[\w(.])/g,")*");
+const F=funcs(dt,d),names=Object.keys(F);
+for(const id of s.match(/(?<![\w.])[A-Za-z_]\w*/g)||[])if(!names.includes(id)&&!["t","n","k","pi","e"].includes(id))throw Error("Nombre desconocido: «"+id+"». La variable es "+(d?"n":"t")+".");
+let g;try{g=new Function(...names,"return v=>{const t=v,n=v,k=v,pi=Math.PI,e=Math.E;return ("+s+")}")(...names.map(k=>F[k]))}catch(_){throw Error("Sintaxis inválida: revisa paréntesis y operadores.")}
+const f=v=>{let r=+g(v);return isFinite(r)?Math.max(-1e9,Math.min(1e9,r)):0};
+try{f(0);f(1)}catch(_){throw Error("No se pudo evaluar la expresión.")}return f}
+
+/* ---------- cálculo ---------- */
+const lin=(a,b,n)=>Array.from({length:n},(_,i)=>a+(b-a)*i/(n-1)),rng=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
+const fv=v=>(v>=0?"+":"")+(Math.abs(v)<1e4?v.toFixed(3):v.toExponential(3));
+function rebuild(){
+const d=disc;let R=+$("#rg").value||6;R=Math.max(2,Math.min(30,R));let tau,tf,dt;
+if(d){R=Math.round(R);tau=rng(-2*R,2*R);tf=rng(-R,R);dt=1}else{const N=2401;tau=lin(-2*R,2*R,N);dt=tau[1]-tau[0];tf=lin(-R,R,300)}
+let fx,fh;$("#ex").textContent=$("#eh").textContent="";
+try{fx=mk($("#ix").value,dt,d)}catch(e){$("#ex").textContent="⚠ "+e.message}
+try{fh=mk($("#ih").value,dt,d)}catch(e){$("#eh").textContent="⚠ "+e.message}
+if(!fx||!fh)return;
+const xv=tau.map(fx),hv=tau.map(fh),hr=tau.map(v=>fh(-v)),sc=d?1:dt;
+const y=tf.map(t=>{let a=0;for(let i=0;i<tau.length;i++)if(xv[i])a+=xv[i]*fh(t-tau[i]);return a*sc});
+const i0=tau.findIndex(v=>v>=-R-1e-9),i1=tau.length-tau.slice().reverse().findIndex(v=>v<=R+1e-9);
+D={d,R,tau,tf,dt,sc,xv,hv,hr,y,fx,fh,n:tf.length,sl:[i0,i1],src:[$("#ix").value,$("#ih").value]};
+let m=0;for(const k of [0,.2,.4,.5,.6,.8,1]){const t=tf[Math.round(k*(D.n-1))];for(let i=i0;i<i1;i++)m=Math.max(m,Math.abs(xv[i]*fh(t-tau[i])),Math.abs(fh(t-tau[i])))}
+D.m=m;$("#sl").max=D.n-1;pause();pos=0;texts();render()}
+
+/* ---------- dibujo ---------- */
+const cs=()=>{const g=getComputedStyle(document.documentElement),q=n=>g.getPropertyValue(n).trim();return{mu:q("--mu"),gr:q("--gr"),tx:q("--tx"),x:q("--x"),h:q("--h"),g:q("--g"),o:q("--o"),ed:q("--edge")}};
+function tk(a,b){const s0=(b-a)/8,m=10**Math.floor(Math.log10(s0)),f=s0/m;let s=(f<1.5?1:f<3.5?2:f<7.5?5:10)*m;if(D.d)s=Math.max(1,Math.round(s));const o=[];for(let v=Math.ceil(a/s-1e-9)*s;v<=b+1e-9;v+=s)o.push(+v.toFixed(9));return o}
+function lim(...a){let lo=0,hi=0;for(const r of a)for(const v of r){if(v<lo)lo=v;if(v>hi)hi=v}const sp=(hi-lo)||1;return[lo-.12*sp,hi+.12*sp]}
+function plot(cv,o){const w=cv.clientWidth,h=cv.clientHeight;if(!w||!D)return;const r=devicePixelRatio||1;cv.width=w*r;cv.height=h*r;
+const c=cv.getContext("2d"),C=cs();c.setTransform(r,0,0,r,0,0);const L=44,Rm=12,T=26,B=24,[x0,x1]=o.xl,[y0,y1]=o.yl;
+const X=v=>L+(v-x0)/(x1-x0)*(w-L-Rm),Y=v=>T+(y1-v)/(y1-y0)*(h-T-B);
+c.font="11px "+MONO;c.textBaseline="middle";c.lineWidth=1;
+for(const v of tk(x0,x1)){c.strokeStyle=C.gr;c.beginPath();c.moveTo(X(v),T);c.lineTo(X(v),h-B);c.stroke();c.fillStyle=C.mu;c.textAlign="center";c.fillText(v,X(v),h-B+12)}
+for(const v of tk(y0,y1).map(v=>+v.toPrecision(6))){c.strokeStyle=C.gr;c.beginPath();c.moveTo(L,Y(v));c.lineTo(w-Rm,Y(v));c.stroke();c.fillStyle=C.mu;c.textAlign="right";c.fillText(+v.toPrecision(3),L-5,Y(v))}
+c.strokeStyle=C.ed;c.lineWidth=1.3;c.beginPath();c.moveTo(L,Y(0));c.lineTo(w-Rm,Y(0));c.moveTo(X(0),T);c.lineTo(X(0),h-B);c.stroke();
+c.fillStyle=C.mu;c.textAlign="left";c.font="bold 10px "+MONO;c.fillText(o.title,L,11);c.save();c.beginPath();c.rect(L,T-4,w-L-Rm,h-T-B+8);c.clip();
+for(const s of o.S){c.globalAlpha=s.a??1;c.strokeStyle=c.fillStyle=C[s.c];c.lineWidth=s.w||2.4;c.setLineDash(s.dash?[6,4]:[]);
+if(D.d){for(let i=0;i<s.xs.length;i++){const px=X(s.xs[i]);c.beginPath();c.moveTo(px,Y(0));c.lineTo(px,Y(s.ys[i]));c.stroke();
+if(!s.thick){c.beginPath();c.arc(px,Y(s.ys[i]),4,0,7);s.hol?c.stroke():c.fill()}}}
+else{c.beginPath();s.xs.forEach((v,i)=>i?c.lineTo(X(v),Y(s.ys[i])):c.moveTo(X(v),Y(s.ys[i])));
+if(s.fill){c.lineTo(X(s.xs[s.xs.length-1]),Y(0));c.lineTo(X(s.xs[0]),Y(0));c.globalAlpha=.38;c.fill()}else c.stroke()}}
+c.restore();c.globalAlpha=1;c.setLineDash([]);
+if(o.pt){c.strokeStyle=c.fillStyle=C.o;c.lineWidth=2;c.beginPath();c.moveTo(X(o.pt[0]),Y(0));c.lineTo(X(o.pt[0]),Y(o.pt[1]));c.stroke();c.beginPath();c.arc(X(o.pt[0]),Y(o.pt[1]),5,0,7);c.fill()}
+c.textAlign="right";let ly=11;c.font="11px "+MONO;for(const [t,k] of o.lg||[]){c.fillStyle=C[k];c.fillText("● "+t,w-Rm,ly);ly+=0}}
+const vis=a=>a.slice(D.sl[0],D.sl[1]),xl=()=>{const p=D.d?.8:0;return[-D.R-p,D.R+p]},nm=(a,b)=>D.d?a+"["+b+"]":a+"("+b+")";
+function render(){if(!D)return;({1:d1,2:d2,3:()=>d3(Math.round(pos)),4:d4})[tab]()}
+function d1(){const v=D.d?"n":"t",t=vis(D.tau);plot($("#c1"),{title:"PASO 1 · SEÑALES "+nm("x",v)+" Y "+nm("h",v),xl:xl(),yl:lim(vis(D.xv),vis(D.hv)),S:[{xs:t,ys:vis(D.xv),c:"x"},{xs:t,ys:vis(D.hv),c:"h"}]})}
+function d2(){const a=D.d?"k":"τ",t=vis(D.tau);plot($("#c2"),{title:"PASO 2 · REFLEXIÓN "+nm("h","−"+a),xl:xl(),yl:lim(vis(D.xv),vis(D.hv),vis(D.hr)),S:[{xs:t,ys:vis(D.xv),c:"x",a:.4},{xs:t,ys:vis(D.hv),c:"h",a:.5,dash:1,hol:1,w:1.8},{xs:t,ys:vis(D.hr),c:"h"}]})}
+function d3(i){i=Math.max(0,Math.min(D.n-1,i));const t=D.tf[i],sl=D.sl,ta=vis(D.tau),H=[],P=[];
+for(let j=sl[0];j<sl[1];j++){const h=D.fh(t-D.tau[j]);H.push(h);P.push(h*D.xv[j])}
+const S=[{xs:ta,ys:vis(D.xv),c:"x"},{xs:ta,ys:H,c:"h"},D.d?{xs:ta,ys:P,c:"g",a:.45,w:9,thick:1}:{xs:ta,ys:P,c:"g",fill:1,w:1}];
+const m=D.m*1.12;plot($("#c3a"),{title:"TRASLAPE · "+nm("x",D.d?"k":"τ")+" · "+nm("h",D.d?"n − k":"t − τ"),xl:xl(),yl:[Math.min(-m*.1,lim(vis(D.xv),vis(D.hv))[0]),Math.max(m,lim(vis(D.xv),vis(D.hv))[1])],S});
+const tt=D.tf.slice(0,i+1);plot($("#c3b"),{title:"RESULTADO · "+nm("y",D.d?"n":"t"),xl:xl(),yl:lim(D.y),S:[{xs:D.tf,ys:D.y,c:"tx",a:.16,w:1.5,hol:0},{xs:tt,ys:D.y.slice(0,i+1),c:"tx"}],pt:[t,D.y[i]]});
+$("#hv").textContent=fv(D.y[i]);$("#hs").textContent=D.d?"en n = "+(t>=0?"+":"")+t+" — suma de x[k]·h[n − k]":"en t = "+(t>=0?"+":"")+t.toFixed(2)+" — área bajo x(τ)·h(t − τ)";
+$("#sl").value=i}
+function d4(){const y=D.y,v=D.d?"n":"t";plot($("#c4"),{title:"RESULTADO · "+nm("y",v)+" = "+nm("x",v)+" ∗ "+nm("h",v),xl:xl(),yl:lim(y),S:[{xs:D.tf,ys:y,c:"tx"}]});
+let mx=0,mn=0;y.forEach((q,i)=>{if(q>y[mx])mx=i;if(q<y[mn])mn=i});let tot=0;for(let i=0;i<y.length;i++)tot+=y[i]*(D.d?1:(D.tf[1]-D.tf[0]));
+const at=i=>D.d?"n = "+D.tf[i]:"t = "+D.tf[i].toFixed(2);$("#info").innerHTML="máx = <b>"+fv(y[mx])+"</b> en "+at(mx)+" · mín = <b>"+fv(y[mn])+"</b> en "+at(mn)+" · "+(D.d?"Σ y[n]":"∫ y dt")+" = <b style='color:var(--o)'>"+fv(tot)+"</b>";evalAt()}
+function evalAt(){if(!D)return;const o=$("#eo");try{let t0=mk($("#et").value.replace(",","."),1,D.d)(0);let R=2*D.R+Math.abs(t0),y=0;
+if(D.d){t0=Math.round(t0);for(let k=-Math.round(R);k<=Math.round(R);k++)y+=D.fx(k)*D.fh(t0-k)}
+else{const dt=.002,fx=mk(D.src[0],dt,0),fh=mk(D.src[1],dt,0);for(let k=-R;k<=R;k+=dt)y+=fx(k)*fh(t0-k)*dt}
+o.innerHTML=(D.d?"n = "+t0:"t = "+(+t0.toFixed(4)))+" → "+nm("y",D.d?"n":"t")+(D.d?" = ":" ≈ ")+"<b style='color:var(--g)'>"+fv(y)+"</b>"}catch(e){o.innerHTML="<span class=err>⚠ "+e.message+"</span>"}}
+
+/* ---------- animación ---------- */
+function pause(){playing=false;$("#pl").textContent="▶ REPRODUCIR";$("#live").innerHTML="<span style='color:var(--mu)'>● EN PAUSA</span>"}
+function play(){if(!D)return;if(pos>=D.n-1)pos=0;playing=true;last=performance.now();$("#pl").textContent="❚❚ PAUSA";$("#live").innerHTML="<span style='color:var(--g)'>● EN VIVO</span>";requestAnimationFrame(loop)}
+function loop(ts){if(!playing)return;pos=Math.min(pos+(ts-last)/1000*(D.d?2:40)*SP[si],D.n-1);last=ts;if(tab===3)d3(Math.round(pos));if(pos>=D.n-1)pause();else requestAnimationFrame(loop)}
+function speed(){$("#spd").textContent="VELOCIDAD "+SP[si]+"×";$("#sd").disabled=si==0;$("#sf").disabled=si==SP.length-1}
+
+/* ---------- interfaz ---------- */
+function texts(){const d=disc,v=d?"n":"t",x=nm("x",v),h=nm("h",v),y=nm("y",v);document.title="Simulador de convolución — "+x+" ∗ "+h;
+$("#badge").innerHTML="● "+(d?"SUMATORIA · TIEMPO DISCRETO":"INTEGRAL NUMÉRICA · RIEMANN");
+const T=["1 · SEÑALES "+x+" Y "+h,"2 · REFLEXIÓN "+nm("h","−"+(d?"k":"τ")),"3 · CONVOLUCIÓN "+y,"4 · RESULTADO "+y];document.querySelectorAll("#tabs button").forEach((b,i)=>b.textContent=T[i]);
+document.querySelectorAll(".v1").forEach(e=>e.textContent=x);document.querySelectorAll(".v2").forEach(e=>e.textContent=h);
+$("#help").textContent=d?HD:HC;$("#evc").textContent="VALOR NUMÉRICO "+y+" EN "+v+" =";
+$("#hc").textContent="AMPLITUD DE SALIDA "+y+" · "+v+" ∈ [−"+(D?D.R:6)+", +"+(D?D.R:6)+"]";
+const a=d?"k":"τ";$("#lg3").innerHTML=[["var(--x)",nm("x",a)],["var(--h)",nm("h",d?"n − k":"t − τ")],["var(--g)","producto → "+(d?"suma":"área")],["var(--tx)",y],["var(--o)","instante actual"]].map(p=>"<span><span style='color:"+p[0]+"'>●</span> "+p[1]+"</span>").join("")}
+function chips(){const P=disc?PD:PC;$("#chips").innerHTML="";P.forEach((p,i)=>{const b=document.createElement("button");b.className="chip";b.textContent=p[0];b.onclick=()=>{$("#ix").value=p[1];$("#ih").value=p[2];rebuild()};$("#chips").appendChild(b)})}
+function mode(d){if(d===disc)return;disc=d;$("#bc").classList.toggle("on",!d);$("#bd").classList.toggle("on",d);const r=$("#rg");r.step=d?1:.5;r.value=d?Math.round(+r.value):r.value;chips();const P=d?PD:PC;$("#ix").value=P[0][1];$("#ih").value=P[0][2];rebuild()}
+$("#bc").onclick=()=>mode(false);$("#bd").onclick=()=>mode(true);
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{tab=+b.dataset.t;document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on",x===b));document.querySelectorAll(".pane").forEach((p,i)=>p.classList.toggle("on",i+1===tab));if(tab!==3&&playing)pause();render()});
+let deb;for(const id of ["#ix","#ih","#rg"])$(id).oninput=()=>{clearTimeout(deb);deb=setTimeout(rebuild,250)};
+$("#et").oninput=evalAt;$("#pl").onclick=()=>playing?pause():play();$("#rs").onclick=()=>{pause();pos=0;render()};
+$("#sl").oninput=e=>{pause();pos=+e.target.value;render()};$("#sd").onclick=()=>{si=Math.max(0,si-1);speed()};$("#sf").onclick=()=>{si=Math.min(SP.length-1,si+1);speed()};
+addEventListener("resize",()=>render());
+chips();speed();$("#ix").value=PC[0][1];$("#ih").value=PC[0][2];pause();rebuild();
+</script></body></html>
