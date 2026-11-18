@@ -12,7 +12,7 @@ Disponible en dos versiones: una de escritorio (Python) y una web que corre dire
 Abre `docs/index.html` en cualquier navegador, o usa la versión publicada con GitHub Pages:
 
 ```
-https://mrcheese20064-ctrl.github.io/simulador-convolucion/
+https://mrcheese20064-ctrl.github.io/git-Convolution-simulator/
 ```
 
 ## Versión de escritorio (Python + PyQt6)
