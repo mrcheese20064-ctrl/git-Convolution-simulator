@@ -18,7 +18,7 @@ https://mrcheese20064-ctrl.github.io/git-Convolution-simulator/
 ## Versión de escritorio (Python + PyQt6)
 
 ```bash
-git clone https://github.com/<tu-usuario>/simulador-convolucion.git
+git clone https://github.com/mrcheese20064-ctrl/simulador-convolucion.git
 cd simulador-convolucion
 python -m venv .venv
 # Windows: .venv\Scripts\activate    |    Linux/macOS: source .venv/bin/activate
